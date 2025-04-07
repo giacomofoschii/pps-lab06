@@ -1,5 +1,7 @@
 package ex1
 
+import scala.collection.immutable.{List, Nil}
+
 // List as a pure interface
 enum List[A]:
   case ::(h: A, t: List[A])
@@ -45,13 +47,38 @@ enum List[A]:
     case h :: t => t.foldLeft(h)(op)
 
   // Exercise: implement the following methods
-  def zipWithValue[B](value: B): List[(A, B)] = ???
-  def length(): Int = ???
-  def zipWithIndex: List[(A, Int)] = ???
-  def partition(predicate: A => Boolean): (List[A], List[A]) = ???
-  def span(predicate: A => Boolean): (List[A], List[A]) = ???
-  def takeRight(n: Int): List[A] = ???
-  def collect(predicate: PartialFunction[A, A]): List[A] = ???
+  def zipWithValue[B](value: B): List[(A, B)] = this.map(a => (a, value))
+  def length(): Int = this.foldLeft(0)((acc, _) => acc + 1)
+  def zipWithIndex: List[(A, Int)] = {
+    def helper(list: List[A], index: Int): List[(A, Int)] = list match
+      case Nil() => Nil()
+      case h :: t => (h, index) :: helper(t, index + 1)
+    helper(this, 0)
+  }
+  def partition(predicate: A => Boolean): (List[A], List[A]) =
+    this.foldRight((Nil(): List[A], Nil(): List[A])) { (elem, acc) =>
+      if predicate(elem) then (elem :: acc._1, acc._2)
+      else (acc._1, elem :: acc._2)
+    }
+  def span(predicate: A => Boolean): (List[A], List[A]) = this match
+    case h :: t if predicate(h) =>
+      val (left, right) = t.span(predicate)
+      (h :: left, right)
+    case _ => (Nil(), this)
+  def takeRight(n: Int): List[A] = {
+    def helper[B](list: List[A], acc: List[A], f: (List[A], A) => List[A]): List[A] = list match
+      case Nil() => acc
+      case h :: t =>
+        if acc.foldLeft(0)((acc, _) => acc + 1) >= n then helper(t, f(acc.tail.getOrElse(Nil()), h), f)
+        else helper(t, f(acc, h), f)
+    helper(this, Nil(), (acc, h) => acc.append(List(h)))
+  }
+  def collect[B](predicate: PartialFunction[A, B]): List[B] =
+    this.foldRight(Nil(): List[B]) { (elem, acc) =>
+      if predicate.isDefinedAt(elem) then predicate(elem) :: acc
+      else acc
+    }
+      
 // Factories
 object List:
 
